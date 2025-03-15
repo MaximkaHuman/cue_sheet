@@ -16,15 +16,15 @@
 
 //! Parsing of cue sheets. Also contains some data types.
 
-use errors::Error;
+use crate::errors::Error;
 use std::cmp::Ordering;
 use std::fmt;
 use std::ops::Sub;
 use std::str::FromStr;
 
 mod tokenization;
-use self::tokenization::tokenize;
 pub use self::tokenization::Token;
+use self::tokenization::tokenize;
 
 mod command;
 pub use self::command::Command;
@@ -57,7 +57,7 @@ impl Time {
         Time {
             mins: minutes,
             secs: seconds,
-            frames: frames,
+            frames,
         }
     }
 
@@ -332,7 +332,7 @@ pub fn parse_cue(source: &str) -> Result<Vec<Command>, Error> {
     let mut tokens = tokenize(source)?;
     let mut commands = Vec::new();
 
-    while tokens.len() > 0 {
+    while !tokens.is_empty() {
         commands.push(Command::consume(&mut tokens)?);
     }
 

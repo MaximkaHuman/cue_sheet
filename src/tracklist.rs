@@ -18,8 +18,8 @@
 
 // TODO don't swallow errors in parsing but use Result and Option where appropriate.
 
-use errors::Error;
-use parser::{self, Command, FileFormat, Time, TrackType};
+use crate::errors::Error;
+use crate::parser::{self, Command, FileFormat, Time, TrackType};
 
 /// A tracklist provides a more useful representation of the information of a cue sheet.
 #[derive(Clone, Debug)]
@@ -42,7 +42,7 @@ impl Tracklist {
         let mut performer = None;
         let mut title = None;
 
-        while commands.len() > 0 {
+        while !commands.is_empty() {
             match commands[0].clone() {
                 Command::Performer(p) => {
                     performer = Some(p);
@@ -62,7 +62,7 @@ impl Tracklist {
         }
 
         let mut files = Vec::new();
-        while commands.len() > 0 {
+        while !commands.is_empty() {
             if let Ok(file) = TrackFile::consume(&mut commands) {
                 files.push(file);
             } else {
@@ -71,9 +71,9 @@ impl Tracklist {
         }
 
         Ok(Tracklist {
-            files: files,
-            performer: performer,
-            title: title,
+            files,
+            performer,
+            title,
         })
     }
 }
@@ -97,9 +97,9 @@ impl TrackFile {
             let mut tracks: Vec<Track> = Vec::new();
             let mut last_time: Option<Time> = None;
 
-            while commands.len() > 0 {
+            while !commands.is_empty() {
                 if let Ok(track) = Track::consume(commands) {
-                    if track.index.len() > 0 {
+                    if !track.index.is_empty() {
                         let time = track.index[track.index.len() - 1].clone();
 
                         if let Some(start) = last_time {
@@ -108,7 +108,7 @@ impl TrackFile {
 
                             let track_n = tracks.len();
                             if let Some(last_track) = tracks.get_mut(track_n - 1) {
-                                (*last_track).duration = Some(duration);
+                                last_track.duration = Some(duration);
                             }
                         }
 
@@ -123,9 +123,9 @@ impl TrackFile {
                 }
             }
             Ok(TrackFile {
-                tracks: tracks,
-                name: name,
-                format: format,
+                tracks,
+                name,
+                format,
             })
         } else {
             Err("TrackFile::consume called but no Track command found.".into())
@@ -168,7 +168,7 @@ impl Track {
             let mut performer = None;
             let mut index = Vec::new();
 
-            while commands.len() > 0 {
+            while !commands.is_empty() {
                 match commands[0].clone() {
                     Command::Performer(p) => {
                         performer = Some(p);
@@ -184,13 +184,12 @@ impl Track {
                             .ok_or("Pregap is the last command in the track!".to_owned())?
                             .to_owned();
 
-                        let first_index;
-                        match next_command {
-                            Command::Index(_, time) => first_index = time,
+                        let first_index = match next_command {
+                            Command::Index(_, time) => time,
                             _ => {
                                 return Err("Pregap is not followed by an index!".into());
                             }
-                        }
+                        };
                         let diff = first_index.total_frames() - time.total_frames();
                         index.push((0, Time::from_frames(diff)));
                         commands.remove(0);
@@ -204,12 +203,12 @@ impl Track {
             }
 
             Ok(Track {
-                title: title,
-                track_type: track_type,
+                title,
+                track_type,
                 duration: None,
-                index: index,
+                index,
                 number: track_num,
-                performer: performer,
+                performer,
             })
         } else {
             Err("Track::consume called but no Track command found.".into())

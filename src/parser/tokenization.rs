@@ -14,14 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-use errors::Error;
-use parser::Time;
+use crate::errors::Error;
+use crate::parser::Time;
 
 /// Any token as it can appear in a cue sheet.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Token {
-    /// A two digit long integer.
-    Number(u32),
+    /// A 13 digits long integer.
+    Number(u64),
 
     /// Any string, notice commands and long numbers are all treated as String for the sake of this
     /// parser's implementation.
@@ -58,7 +58,7 @@ impl Reader {
     fn peek(&self, n: usize) -> Result<String, Error> {
         if self.position + n <= self.chars.len() {
             Ok(self.chars[self.position..self.position + n]
-                .into_iter()
+                .iter()
                 .collect())
         } else {
             Err("Tried to read out of bounds of reader.".into())
@@ -66,40 +66,38 @@ impl Reader {
     }
 
     fn take(&mut self, n: usize) -> Result<String, Error> {
-        self.peek(n).map(|s| {
+        self.peek(n).inspect(|_s| {
             self.position += n;
-            s
         })
     }
 
     fn try_take_time(&mut self) -> Option<Time> {
-        self.peek(8).ok().and_then(|s| s.parse().ok()).map(|time| {
-            self.position += 8;
-            time
-        })
+        self.peek(8)
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .inspect(|_time| {
+                self.position += 8;
+            })
     }
 
-    // notice that numbers can only be two digits long
-    fn try_take_number(&mut self) -> Option<u32> {
-        // Check if the next two chars are digits.
-        let s = match self.peek(2) {
+    // notice that numbers can only be N digits long
+    fn try_take_number<const N: usize>(&mut self) -> Option<u64> {
+        // Check if the next N chars are digits.
+        let s = match self.peek(N) {
             Ok(s) => s,
             Err(_) => return None,
         };
 
-        if s.chars()
-            .map(|c| DIGITS.contains(&c))
-            .fold(true, |old, new| old && new)
-        {
+        if s.chars().all(|c| DIGITS.contains(&c)) {
             // Return a number if the third character is either whitespace or EOF.
-            if let Ok(s3) = self.peek(3) {
-                if !is_whitespace(s3.chars().nth(2).unwrap()) {
+            if let Ok(s3) = self.peek(N + 1) {
+                if !is_whitespace(s3.chars().nth(N).unwrap()) {
                     return None;
                 }
             }
 
             // Parse the number.
-            self.position += 3;
+            self.position += N + 1;
             Some(s.parse().unwrap())
         } else {
             None
@@ -160,7 +158,9 @@ pub fn tokenize(source: &str) -> Result<Vec<Token>, Error> {
     while reader.available() {
         if let Some(time) = reader.try_take_time() {
             tokens.push(Token::Time(time));
-        } else if let Some(num) = reader.try_take_number() {
+        } else if let Some(num) = reader.try_take_number::<2>() {
+            tokens.push(Token::Number(num));
+        } else if let Some(num) = reader.try_take_number::<13>() {
             tokens.push(Token::Number(num));
         } else {
             tokens.push(Token::String(reader.take_string()?));
@@ -190,19 +190,19 @@ mod tests {
     #[test]
     fn try_take_number() {
         let mut r1 = Reader::new("12");
-        assert_eq!(r1.try_take_number(), Some(12));
+        assert_eq!(r1.try_take_number::<2>(), Some(12));
 
         let mut r2 = Reader::new("xyz");
-        assert_eq!(r2.try_take_number(), None);
+        assert_eq!(r2.try_take_number::<2>(), None);
 
         let mut r3 = Reader::new(" ");
-        assert_eq!(r3.try_take_number(), None);
+        assert_eq!(r3.try_take_number::<2>(), None);
     }
 
     #[test]
     fn string_starting_with_num() {
         let mut r1 = Reader::new("860B640B");
-        assert_eq!(r1.try_take_number(), None);
+        assert_eq!(r1.try_take_number::<2>(), None);
         assert_eq!(r1.take_string().unwrap(), "860B640B".to_string());
     }
 
@@ -217,13 +217,13 @@ mod tests {
 
     #[test]
     fn basic_types() {
-        let source = r#"ABC 12 10:10:30 Abc"#;
+        let source = r#"ABC 0123456789012 10:10:30 Abc"#;
         let tokens = tokenize(source).unwrap();
 
         println!("{:?}", tokens);
         assert_eq!(tokens.len(), 4);
         assert_eq!(tokens[0], Token::String("ABC".to_string()));
-        assert_eq!(tokens[1], Token::Number(12));
+        assert_eq!(tokens[1], Token::Number(0123456789012));
         assert_eq!(tokens[2], Token::Time(Time::new(10, 10, 30)));
         assert_eq!(tokens[3], Token::String("Abc".to_string()));
     }

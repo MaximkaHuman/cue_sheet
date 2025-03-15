@@ -18,6 +18,7 @@
 //!
 //! Notice that so far error handling was done rather quickly with a lot of string based error
 //! messages.
+use std::num::TryFromIntError;
 
 error_chain! {
     types {
@@ -29,6 +30,8 @@ error_chain! {
     foreign_links {
         ParseInt(::std::num::ParseIntError)
             #[doc="Parsing a string into an integer failed."];
+        TryFromInt(TryFromIntError)
+            #[doc="Parsing a integer into an integer failed."];
     }
 
     errors { }
