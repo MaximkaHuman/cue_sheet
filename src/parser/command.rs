@@ -63,7 +63,7 @@ pub enum Command {
 }
 
 fn consume_token(tokens: &mut Vec<Token>) -> Result<Token, Error> {
-    if tokens.len() == 0 {
+    if tokens.is_empty() {
         Err("No tokens left!".into())
     } else {
         Ok(tokens.remove(0))
@@ -104,7 +104,7 @@ impl Command {
             "FLAGS" => {
                 let mut flags = Vec::<TrackFlag>::new();
 
-                while tokens.len() > 0 {
+                while !tokens.is_empty() {
                     let token = tokens.remove(0);
                     let ok = match token {
                         Token::String(ref s) => match TrackFlag::from_str(s.as_str()) {
@@ -123,7 +123,7 @@ impl Command {
                     }
                 }
 
-                if flags.len() == 0 {
+                if flags.is_empty() {
                     Err("Encountered FLAGS command without succeeding TrackFlag".into())
                 } else {
                     Ok(Command::Flags(flags))

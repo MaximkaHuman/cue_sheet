@@ -58,7 +58,7 @@ impl Reader {
     fn peek(&self, n: usize) -> Result<String, Error> {
         if self.position + n <= self.chars.len() {
             Ok(self.chars[self.position..self.position + n]
-                .into_iter()
+                .iter()
                 .collect())
         } else {
             Err("Tried to read out of bounds of reader.".into())
@@ -66,17 +66,18 @@ impl Reader {
     }
 
     fn take(&mut self, n: usize) -> Result<String, Error> {
-        self.peek(n).map(|s| {
+        self.peek(n).inspect(|_s| {
             self.position += n;
-            s
         })
     }
 
     fn try_take_time(&mut self) -> Option<Time> {
-        self.peek(8).ok().and_then(|s| s.parse().ok()).map(|time| {
-            self.position += 8;
-            time
-        })
+        self.peek(8)
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .inspect(|_time| {
+                self.position += 8;
+            })
     }
 
     // notice that numbers can only be N digits long
@@ -87,10 +88,7 @@ impl Reader {
             Err(_) => return None,
         };
 
-        if s.chars()
-            .map(|c| DIGITS.contains(&c))
-            .fold(true, |old, new| old && new)
-        {
+        if s.chars().all(|c| DIGITS.contains(&c)) {
             // Return a number if the third character is either whitespace or EOF.
             if let Ok(s3) = self.peek(N + 1) {
                 if !is_whitespace(s3.chars().nth(N).unwrap()) {

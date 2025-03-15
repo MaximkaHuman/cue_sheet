@@ -57,7 +57,7 @@ impl Time {
         Time {
             mins: minutes,
             secs: seconds,
-            frames: frames,
+            frames,
         }
     }
 
@@ -332,7 +332,7 @@ pub fn parse_cue(source: &str) -> Result<Vec<Command>, Error> {
     let mut tokens = tokenize(source)?;
     let mut commands = Vec::new();
 
-    while tokens.len() > 0 {
+    while !tokens.is_empty() {
         commands.push(Command::consume(&mut tokens)?);
     }
 
