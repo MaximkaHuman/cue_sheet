@@ -16,15 +16,15 @@
 
 //! Parsing of cue sheets. Also contains some data types.
 
-use errors::Error;
+use crate::errors::Error;
 use std::cmp::Ordering;
 use std::fmt;
 use std::ops::Sub;
 use std::str::FromStr;
 
 mod tokenization;
-use self::tokenization::tokenize;
 pub use self::tokenization::Token;
+use self::tokenization::tokenize;
 
 mod command;
 pub use self::command::Command;

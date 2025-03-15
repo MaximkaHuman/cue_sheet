@@ -18,8 +18,8 @@
 
 // TODO don't swallow errors in parsing but use Result and Option where appropriate.
 
-use errors::Error;
-use parser::{self, Command, FileFormat, Time, TrackType};
+use crate::errors::Error;
+use crate::parser::{self, Command, FileFormat, Time, TrackType};
 
 /// A tracklist provides a more useful representation of the information of a cue sheet.
 #[derive(Clone, Debug)]

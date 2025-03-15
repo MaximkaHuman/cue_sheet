@@ -15,14 +15,14 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 use super::{FileFormat, Time, Token, TrackFlag, TrackType};
-use errors::Error;
+use crate::errors::Error;
 use std::str::FromStr;
 
 /// The main grammar element of CUE sheets.
 #[derive(Clone, Debug)]
 pub enum Command {
     /// A 13-digit UPC/EAN code.
-    Catalog(String),
+    Catalog(u64),
 
     /// A path to a file containing CD-Text info.
     Cdtextfile(String),
@@ -77,7 +77,7 @@ fn consume_time(tokens: &mut Vec<Token>) -> Result<Time, Error> {
     }
 }
 
-fn consume_number(tokens: &mut Vec<Token>) -> Result<u32, Error> {
+fn consume_number(tokens: &mut Vec<Token>) -> Result<u64, Error> {
     match consume_token(tokens)? {
         Token::Number(num) => Ok(num),
         t => Err(format!("Expeceted number but found {:?} instead", t).into()),
@@ -87,7 +87,7 @@ fn consume_number(tokens: &mut Vec<Token>) -> Result<u32, Error> {
 fn consume_string(tokens: &mut Vec<Token>) -> Result<String, Error> {
     match consume_token(tokens)? {
         Token::String(s) => Ok(s),
-        t => Err(format!("Expeceted string but found {:?} instead", t).into()),
+        t => Err(format!("Expected string but found {:?} instead", t).into()),
     }
 }
 
@@ -95,7 +95,7 @@ impl Command {
     pub(crate) fn consume(tokens: &mut Vec<Token>) -> Result<Command, Error> {
         let keyword = consume_string(tokens)?;
         match keyword.to_uppercase().as_str() {
-            "CATALOG" => Ok(Command::Catalog(format!("{:013}", consume_number(tokens)?))),
+            "CATALOG" => Ok(Command::Catalog(consume_number(tokens)?)),
             "CDTEXTFILE" => Ok(Command::Cdtextfile(consume_string(tokens)?)),
             "FILE" => Ok(Command::File(
                 consume_string(tokens)?,
@@ -130,7 +130,7 @@ impl Command {
                 }
             }
             "INDEX" => Ok(Command::Index(
-                consume_number(tokens)?,
+                consume_number(tokens)?.try_into()?,
                 consume_time(tokens)?,
             )),
             "ISRC" => Ok(Command::Isrc(consume_string(tokens)?)),
@@ -144,7 +144,7 @@ impl Command {
             "SONGWRITER" => Ok(Command::Songwriter(consume_string(tokens)?)),
             "TITLE" => Ok(Command::Title(consume_string(tokens)?)),
             "TRACK" => Ok(Command::Track(
-                consume_number(tokens)?,
+                consume_number(tokens)?.try_into()?,
                 consume_string(tokens)?.parse()?,
             )),
             cmd => Err(format!("Invalid command: {:?}", cmd).into()),
